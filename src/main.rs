@@ -76,21 +76,21 @@ enum CurrentSong {
 
 #[derive(Debug)]
 enum CurrentSongError {
-    AppleScriptError(std::io::Error),
-    AppleScriptExecutionError(std::process::Output),
-    Utf8ParseError,
-    JsonParsingError(serde_json::error::Error, String),
+    AppleScript(std::io::Error),
+    AppleScriptExecution(std::process::Output),
+    Utf8Parse,
+    JsonParsing(serde_json::error::Error, String),
 }
 
 impl std::convert::From<std::io::Error> for CurrentSongError {
     fn from(err: std::io::Error) -> CurrentSongError {
-        CurrentSongError::AppleScriptError(err)
+        CurrentSongError::AppleScript(err)
     }
 }
 
 impl std::convert::From<std::str::Utf8Error> for CurrentSongError {
     fn from(_: std::str::Utf8Error) -> CurrentSongError {
-        CurrentSongError::Utf8ParseError
+        CurrentSongError::Utf8Parse
     }
 }
 
@@ -107,9 +107,9 @@ fn get_current_song() -> Result<CurrentSong, CurrentSongError> {
         // output can have new lines at the end so we need to trim that off so
         // serde doesn't explode
         serde_json::from_str(stdout.trim())
-            .map_err(|err| CurrentSongError::JsonParsingError(err, String::from(stdout)))
+            .map_err(|err| CurrentSongError::JsonParsing(err, String::from(stdout)))
     } else {
-        Err(CurrentSongError::AppleScriptExecutionError(data))
+        Err(CurrentSongError::AppleScriptExecution(data))
     }
 }
 
@@ -157,9 +157,10 @@ fn update_slack_status(
         .json()
         .map_err(|_| SlackProfileUpdateError::JsonParseError)?;
 
-    match res.ok {
-        true => Ok(()),
-        false => Err(SlackProfileUpdateError::RequestFailed(res)),
+    if res.ok {
+        Ok(())
+    } else {
+        Err(SlackProfileUpdateError::RequestFailed(res))
     }
 }
 
