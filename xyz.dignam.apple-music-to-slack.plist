@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>xyz.dignam.apple-music-to-slack</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>SLACK_SECRET_TOKEN</key>
+        <string>xoxp-change-me-!!!!-11111111111111111111111111111111</string>
+        <key>RUST_LOG</key>
+        <string>info</string>
+    </dict>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/apple-music-to-slack</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StartInterval</key>
+    <integer>10</integer> <!-- seconds -->
+
+</dict>
+</plist>
