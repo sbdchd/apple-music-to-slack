@@ -4,9 +4,7 @@
 
 ## Setup
 
-1.  download & compile the program
-
-2.  setup the slack app
+1.  setup the slack app
 
     1. create a new app https://api.slack.com/apps?new_app=1 providing a name
        and selecting the desired Slack Workspace that you're going to run apple
@@ -20,9 +18,9 @@
 
     5. copy the `OAuth Access Token`, this will be used as the `SLACK_SECRET_TOKEN`
 
-3.  compile with `cargo build`
+2.  clone the repo & compile with `cargo build`
 
-4.  Run the binary with the env var `SLACK_SECRET_TOKEN` set to your `OAuth Access Token`
+3.  Run the binary with the env var `SLACK_SECRET_TOKEN` set to your `OAuth Access Token`
 
     Options:
 
@@ -48,7 +46,7 @@
       launchctl unload ~/Library/LaunchAgents/xyz.dignam.apple-music-to-slack.plist
       ```
 
-5.  Success! 🎶
+4.  Success! 🎶
 
 ## prior art
 
