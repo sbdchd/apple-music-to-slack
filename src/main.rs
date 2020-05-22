@@ -166,14 +166,23 @@ fn update_slack_status(
 #[derive(StructOpt, Debug)]
 #[structopt(name = "env")]
 struct Opt {
+    /// Slack OAuth Access Token
     #[structopt(long, env = "SLACK_SECRET_TOKEN")]
     slack_secret_token: String,
+
+    /// Don't change the status emoji on each run
+    #[structopt(long)]
+    no_randomize_emoji: bool,
 }
 
 fn main() {
     env_logger::init();
 
-    let Opt { slack_secret_token } = Opt::from_args();
+    let Opt {
+        slack_secret_token,
+        no_randomize_emoji,
+    } = Opt::from_args();
+    info!("no_randomize_emoji {:?}", no_randomize_emoji);
 
     match get_current_song() {
         Ok(CurrentSong::Playing(song)) => {
@@ -182,10 +191,16 @@ fn main() {
                 .duration_since(UNIX_EPOCH)
                 .expect("problem getting current time");
 
+            let status_emoji = if no_randomize_emoji {
+                Emoji::Notes
+            } else {
+                rand::random::<Emoji>()
+            };
+
             let status = SlackProfileStatus {
                 status_text: format!("{} by {}", song.name, song.artist),
-                status_emoji: rand::random::<Emoji>().into(),
-                status_expiration: (now_unix_time + Duration::from_secs(60)).as_secs(),
+                status_emoji: status_emoji.into(),
+                status_expiration: (now_unix_time + Duration::from_secs(5 * 60)).as_secs(),
             };
             info!("updating status to {:#?}", status);
             let res = update_slack_status(&slack_secret_token, status);
