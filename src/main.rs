@@ -163,6 +163,7 @@ fn update_slack_status(
     }
 }
 
+/// Logging can be enabled with the `RUST_LOG=info` env var
 #[derive(StructOpt, Debug)]
 #[structopt(name = "env")]
 struct Opt {
