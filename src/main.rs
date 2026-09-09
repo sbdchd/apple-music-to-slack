@@ -3,7 +3,6 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use reqwest::header::AUTHORIZATION;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::str;
@@ -136,8 +135,10 @@ struct SlackProfileUpdateResponse {
 
 #[derive(Debug)]
 enum SlackProfileUpdateError {
-    FailedToSend,
-    JsonParseError,
+    SerializationError(serde_json::error::Error),
+    CommandExecutionError(std::io::Error),
+    CommandFailed(std::process::Output),
+    JsonParseError(serde_json::error::Error, String),
     RequestFailed(SlackProfileUpdateResponse),
 }
 
@@ -147,21 +148,45 @@ fn update_slack_status(
     status: SlackProfileStatus,
 ) -> Result<(), SlackProfileUpdateError> {
     let profile_update = SlackProfileUpdate { profile: status };
+    let json_body = serde_json::to_string(&profile_update)
+        .map_err(SlackProfileUpdateError::SerializationError)?;
 
-    let res: SlackProfileUpdateResponse = reqwest::Client::new()
-        .post("https://slack.com/api/users.profile.set")
-        .header(AUTHORIZATION, format!("Bearer {}", secret))
-        .json(&profile_update)
-        .send()
-        .map_err(|_| SlackProfileUpdateError::FailedToSend)?
-        .json()
-        .map_err(|_| SlackProfileUpdateError::JsonParseError)?;
+    let output = Command::new("curl")
+        .arg("-s")
+        .arg("-X")
+        .arg("POST")
+        .arg("https://slack.com/api/users.profile.set")
+        .arg("-H")
+        .arg(format!("Authorization: Bearer {}", secret))
+        .arg("-H")
+        .arg("Content-Type: application/json; charset=utf-8")
+        .arg("-d")
+        .arg(json_body)
+        .output()
+        .map_err(SlackProfileUpdateError::CommandExecutionError)?;
+
+    if !output.status.success() {
+        return Err(SlackProfileUpdateError::CommandFailed(output));
+    }
+
+    let stdout_str = str::from_utf8(&output.stdout).unwrap_or("");
+    let res: SlackProfileUpdateResponse = serde_json::from_str(stdout_str)
+        .map_err(|err| SlackProfileUpdateError::JsonParseError(err, String::from(stdout_str)))?;
 
     if res.ok {
         Ok(())
     } else {
         Err(SlackProfileUpdateError::RequestFailed(res))
     }
+}
+
+fn clear_slack_status(secret: &str) -> Result<(), SlackProfileUpdateError> {
+    let status = SlackProfileStatus {
+        status_text: "".into(),
+        status_emoji: "".into(),
+        status_expiration: 0,
+    };
+    update_slack_status(secret, status)
 }
 
 /// Logging can be enabled with the `RUST_LOG=info` env var
@@ -210,12 +235,21 @@ fn main() {
         }
         Ok(CurrentSong::Paused(song)) => {
             info!("song paused: {:#?}", song);
+            info!("clearing status in slack");
+            let res = clear_slack_status(&slack_secret_token);
+            info!("clear update: {:#?}", res);
         }
         Ok(CurrentSong::Off) => {
             info!("music app not running");
+            info!("clearing status in slack");
+            let res = clear_slack_status(&slack_secret_token);
+            info!("clear update: {:#?}", res);
         }
         Ok(CurrentSong::Stopped) => {
             info!("no song currently selected in music app");
+            info!("clearing status in slack");
+            let res = clear_slack_status(&slack_secret_token);
+            info!("clear update: {:#?}", res);
         }
         Err(err) => {
             info!("error fetching song {:#?}", err);
